@@ -1,0 +1,43 @@
+version: '3.4'
+
+services:
+  api:
+    image: ${DOCKER_REGISTRY-}api
+    build:
+      context: .
+      dockerfile: API/Dockerfile
+
+  processor:
+    image: ${DOCKER_REGISTRY-}processor
+    build:
+      context: .
+      dockerfile: Processor/Dockerfile
+
+  rabbitmq3:
+    container_name: "rabbitmq"
+    image: rabbitmq:3.9-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=FWbBf58nhf25V9nZhtxZZ22334
+      - RABBITMQ_DEFAULT_PASS=UwNRtfXxBKu7fG3ctxxYY55669
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  mssql:
+    image: 'mcr.microsoft.com/mssql/server'
+    ports:
+        - "1433:1433"
+    environment:
+        - ACCEPT_EULA=Y
+        - SA_PASSWORD=bs9CewsX6NvaFx2t
+    volumes: 
+          - sqlsystem:/var/opt/mssql/
+          - sqldata:/var/opt/sqlserver/data
+          - sqllog:/var/opt/sqlserver/log
+          - sqlbackup:/var/opt/sqlserver/backup  
+
+volumes:
+  sqlsystem:
+  sqldata:
+  sqllog:
+  sqlbackup:
