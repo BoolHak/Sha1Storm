@@ -9,6 +9,7 @@ namespace Commun.RabbitMq
             var factory = new ConnectionFactory();
             factory.Uri = new Uri(Config.RabbitMQConnection);
             factory.AutomaticRecoveryEnabled = true;
+            factory.DispatchConsumersAsync = true;
             factory.NetworkRecoveryInterval = TimeSpan.FromSeconds(5);
             factory.RequestedHeartbeat = TimeSpan.FromSeconds(30);
             return factory.CreateConnection();

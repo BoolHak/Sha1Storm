@@ -11,14 +11,13 @@ namespace API.BackgroundServices
     {
 
         private const int BatchSize = 40_000;
+        private const short Sha1Length = 20;
 
         private readonly ChannelReader<GenerateMessage> _channelReader;
-        private readonly IServiceScopeFactory _scopeFactory;
-        public HashSenderBackgroundService(IServiceScopeFactory scopeFactory, Channel<GenerateMessage> channel)
+        
+        public HashSenderBackgroundService(Channel<GenerateMessage> channel)
         {
-            _scopeFactory = scopeFactory;
             _channelReader = channel.Reader;
-            
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,7 +45,7 @@ namespace API.BackgroundServices
                 channel.BasicPublish(exchange: "",
                                  routingKey: "task_queue",
                                  basicProperties: properties,
-                                 body: data.AsMemory(0, BatchSize*20));
+                                 body: data.AsMemory(0, BatchSize* Sha1Length));
 
                 ArrayPool<byte>.Shared.Return(data);
             }
