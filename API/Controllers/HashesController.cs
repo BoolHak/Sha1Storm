@@ -1,6 +1,8 @@
 ﻿using API.Channels;
+using Commun.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Channels;
 
 namespace API.Controllers
@@ -9,10 +11,18 @@ namespace API.Controllers
     [ApiController]
     public class HashesController : ControllerBase
     {
+        
         [HttpGet]
-        public IActionResult GetHashes(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetHashesAsync([FromServices] HashDbContext context, CancellationToken cancellationToken)
         {
-            return Ok();
+            var query = await context.Hashes
+               .GroupBy(p => new { p.Date })
+               .Select(g => new { date = g.Key.Date.ToString("yyyy-MM-dd"), count = g.Count() }).ToListAsync(cancellationToken);
+
+            return Ok(new
+            {
+                hashes = query,
+            });
         }
 
         [HttpPost]
