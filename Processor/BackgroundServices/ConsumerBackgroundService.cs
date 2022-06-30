@@ -1,30 +1,31 @@
 ﻿using Commun.Entities;
 using Commun.RabbitMq;
 using Microsoft.EntityFrameworkCore;
+using Processor.Channels;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
+using System.Threading.Channels;
 
 namespace Processor.BackgroundServices
 {
     public class ConsumerBackgroundService : BackgroundService
     {
-        private readonly IServiceScopeFactory _scopeFactory;
+        
         private const short Sha1Length = 20;
         private const ushort NbChannels = 4;
+        private const int MaxRowCount = 1000;
 
-        public ConsumerBackgroundService(IServiceScopeFactory scopeFactory)
+        private ChannelWriter<InsertQueryMessage> writer;
+
+        public ConsumerBackgroundService(Channel<InsertQueryMessage> channel)
         {
-            _scopeFactory = scopeFactory;
+            writer = channel.Writer;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var connection = MqConnection.GetConnection();
-            
-            using var scope = _scopeFactory.CreateScope();
-            using var dbContext = scope.ServiceProvider.GetRequiredService<HashDbContext>();
-
             var listOfChannels = new List<IModel>();
             
             for(int i = 0; i < NbChannels; i++)
@@ -43,23 +44,36 @@ namespace Processor.BackgroundServices
                 {
                     if (ea.Body.Length == 0) return;
 
-                    var listToInsert = new List<Hash>();
+                    
                     var date = DateTime.Today;
+                    var query = new StringBuilder();
+                    query.Append("INSERT INTO [dbo].[Hashes] ([Date] ,[Sha1]) VALUES ");
+                    int rowCounter = 0;
+
                     for (int i = 0; i < ea.Body.Length; i += Sha1Length)
                     {
-                        var hashInBytes = ea.Body.Slice(i, Sha1Length);
-                        var hashInBase64 = BitConverter.ToString(hashInBytes.Span.ToArray());
-                        listToInsert.Add(new Hash
-                        {
-                            Sha1 = hashInBase64,
-                            Date = date
-                        });
-                    }
+                        rowCounter++;
 
-                    if (listToInsert.Count != 0)
-                    {
-                        await dbContext.Hashes.AddRangeAsync(listToInsert);
-                        await dbContext.SaveChangesAsync();
+                        var hashInBytes = ea.Body.Slice(i, Sha1Length);
+                        var hashInBase64 = Convert.ToBase64String(hashInBytes.Span);
+                        query.Append("('");
+                        query.Append(date);
+                        query.Append("','");
+                        query.Append(hashInBase64);
+                        if(i == ea.Body.Length - Sha1Length || rowCounter == MaxRowCount)
+                        {
+                            rowCounter = 0;
+                            query.Append("')");
+                            await writer.WriteAsync(new InsertQueryMessage
+                            {
+                                Query = query.ToString()
+                            });
+                            query = new StringBuilder();
+                            query.Append("INSERT INTO [dbo].[Hashes] ([Date] ,[Sha1]) VALUES ");
+                        }
+
+                        else
+                            query.Append("'),");
                     }
 
                     channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);

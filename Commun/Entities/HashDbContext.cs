@@ -6,6 +6,7 @@ namespace Commun.Entities
     {
 
         public DbSet<Hash> Hashes { get; set; }
+
         public HashDbContext(DbContextOptions<HashDbContext> options) : base(options)
         {
         }
