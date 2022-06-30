@@ -66,6 +66,7 @@ namespace Processor.BackgroundServices
                             query.Append("')");
                             await writer.WriteAsync(new InsertQueryMessage
                             {
+                                Date = date,
                                 Query = query.ToString()
                             });
                             query = new StringBuilder();
@@ -93,7 +94,7 @@ namespace Processor.BackgroundServices
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(500, stoppingToken);
+                await Task.Delay(500);
             }
 
             foreach(var channel in listOfChannels)

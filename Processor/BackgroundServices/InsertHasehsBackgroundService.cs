@@ -14,6 +14,7 @@ namespace Processor.BackgroundServices
             _channelReader = channel.Reader;
             _scopeFactory = scopeFactory;
         }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -27,7 +28,31 @@ namespace Processor.BackgroundServices
                 using var dbContextTransaction = dbContext.Database.BeginTransaction();
 
                 int nbRows = await dbContext.Database.ExecuteSqlRawAsync(message.Query, stoppingToken);
+                
                 await dbContext.SaveChangesAsync(stoppingToken);
+                
+                var cache = await dbContext.HashCaches
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Date == message.Date);
+                if(cache != null)
+                {
+                    
+                    cache.Count += nbRows;
+                    dbContext.HashCaches.Update(cache);
+                }
+                else
+                {
+                    cache = new HashCache
+                    {
+                        Date = message.Date,
+                        Count = nbRows
+                    };
+                    await dbContext.HashCaches.AddAsync(cache, stoppingToken);
+                }
+
+                await dbContext.SaveChangesAsync(stoppingToken);
+                dbContext.Entry(cache).State = EntityState.Detached;
+                
                 await dbContextTransaction.CommitAsync(stoppingToken);
 
             }

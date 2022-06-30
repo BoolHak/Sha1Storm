@@ -14,9 +14,22 @@ namespace API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetHashesAsync([FromServices] HashDbContext context, CancellationToken cancellationToken)
         {
-            var query = await context.Hashes
+            var query = await context.Hashes.AsNoTracking()
                .GroupBy(p => new { p.Date })
                .Select(g => new { date = g.Key.Date.ToString("yyyy-MM-dd"), count = g.Count() }).ToListAsync(cancellationToken);
+
+            return Ok(new
+            {
+                hashes = query,
+            });
+        }
+
+        [HttpGet("/cached")]
+        public async Task<IActionResult> GetCachedHashesAsync([FromServices] HashDbContext context, CancellationToken cancellationToken)
+        {
+            var query = await context.HashCaches.AsNoTracking()
+                .Select(p => new { date = p.Date.ToString("yyyy-MM-dd"), count = p.Count })
+                .ToListAsync(cancellationToken);
 
             return Ok(new
             {

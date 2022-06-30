@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: API/Dockerfile
+    depends_on:
+      - "mssql"
 
   processor:
     image: ${DOCKER_REGISTRY-}processor

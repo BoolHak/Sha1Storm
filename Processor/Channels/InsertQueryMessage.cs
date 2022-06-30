@@ -2,6 +2,7 @@
 {
     public class InsertQueryMessage
     {
-        public String Query { get; set; }
+        public DateTime Date { get; set; }
+        public string Query { get; set; }
     }
 }
